@@ -1,8 +1,10 @@
 from urllib.parse import urlencode
-
+from dataclasses import asdict
 import requests
 
 from .structures import PatentInfo
+from mongo.mongo import MongoInteraction
+from mongo.structures import MongoConfig
 
 
 class Searcher:
@@ -14,16 +16,16 @@ class Searcher:
     SLEEP_BETWEEN_SIMPLE_REQUEST = 5
     DOCS_PER_REQUEST = 50
 
-    def __init__(self):
+    def __init__(self, config: MongoConfig):
         self._session = requests.Session()
         self._session.headers.update(self._BASIC_HEADERS)
         self._session.get(self._URL)
+        self._mongo_client = MongoInteraction(config)
 
-    def find_information_by_keyword(self, keyword) -> list:
+    def find_information_by_keyword(self, keyword):
         headers = {
             'Referer': f"https://yandex.com/patents?dco=RU&dco=SU&dl=ru&dt=0&dty=1&dty=2&s=0&sp=0&spp=10&st=0&{urlencode({'text': keyword})}"
         }
-        result = []
         p = 0
         url = self.create_url_with_payload(keyword, p)
         json_content = self._session.get(url, headers=headers).json()
@@ -32,14 +34,12 @@ class Searcher:
         while p < max_page:
             url = self.create_url_with_payload(keyword, p)
             resp = self._session.get(url, headers=headers)
-            if resp.status_code != requests.codes.OK:
-                break
             json_content = resp.json()
+            if 'Grouping' not in json_content:
+                break
             pattents = self.convert_patent_to_format(json_content['Grouping'][0])
-            print(len(pattents))
-            result.extend(pattents)
+            self._mongo_client.add_values_to_collection(pattents)
             p += 1
-        return result
 
     def create_url_with_payload(self, keyword, p) -> str:
         payload = {
@@ -59,11 +59,12 @@ class Searcher:
             archive = group['Document'][0]['ArchiveInfo']
             attributes = archive['GtaRelatedAttribute']
             tags = {d['Key']: d['Value'] for d in attributes}
-            patent = PatentInfo(
-                title=tags.get('z_ru_54_name', ''),
-                authors=tags.get('z_ru_72_author', ''),
-                patent_owner=tags.get('z_ru_73_owner', ''),
-                referat=tags.get('z_ru_claims', '')
-            )
-            result.append(patent)
+            if 'z_ru_73_owner' in tags:
+                patent = PatentInfo(
+                    title=tags.get('z_ru_54_name', ''),
+                    authors=tags.get('z_ru_72_author', ''),
+                    patent_owner=tags.get('z_ru_73_owner', ''),
+                    referat=tags.get('z_ru_claims', '')
+                )
+                result.append(asdict(patent))
         return result
