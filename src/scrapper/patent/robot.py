@@ -2,7 +2,7 @@ from urllib.parse import urlencode
 from dataclasses import asdict
 import requests
 
-from logger.log import logger
+from utils.mongo.mongo import MongoInteraction
 from utils.structures import MongoConfig
 from .structures import PatentInfo
 from ..robot import Robot
@@ -17,8 +17,9 @@ class PatentRobot(Robot):
     SLEEP_BETWEEN_SIMPLE_REQUEST = 5
     DOCS_PER_REQUEST = 50
 
-    def __init__(self, config: MongoConfig):
-        super().__init__(config)
+    def __init__(self, mongo_config: dict):
+        config = MongoConfig(**mongo_config)
+        self._mongo_client = MongoInteraction(config)
 
         self._session = requests.Session()
         self._session.headers.update(self._BASIC_HEADERS)
@@ -41,7 +42,6 @@ class PatentRobot(Robot):
             if "Grouping" not in json_content:
                 break
             pattents = self.convert_patent_to_format(json_content["Grouping"][0])
-            logger.info(f"Scrapped data from site {len(pattents)}")
             self._mongo_client.add_values_to_collection(pattents)
             p += 1
 

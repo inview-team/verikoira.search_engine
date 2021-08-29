@@ -8,7 +8,7 @@ class Worker:
     def __init__(self, rabbit_config: dict, mongo_config: dict, search_type: str):
         self._robot = robot_factory.get_robot(
             search_type,
-            config=mongo_config,
+            mongo_config=mongo_config,
         )
         self._rabbit = RabbitClient(
             raw_rabbit_config=rabbit_config,
@@ -23,6 +23,5 @@ class Worker:
         data = json.loads(data)
         task_id = data["task_id"]
         search_query = data["payload"]
-        self._robot.produce_search_query(search_query)
+        self._robot.produce_search_query(task_id, search_query)
         return {"id": task_id, "result": "ok"}
-

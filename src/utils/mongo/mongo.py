@@ -1,17 +1,15 @@
 from pymongo import MongoClient
 
 from ..structures import MongoConfig
-from logger.log import logger
+from utils.logger.log import logger
 
 
 class MongoInteraction:
     def __init__(self, config: MongoConfig):
         self._client = MongoClient(
-            host=f"{config.ip}:{config.port}",
-            serverSelectionTimeoutMS=3000,
+            host=[f"{config.ip}:{config.port}"],
             username=config.user,
-            password=config.password,
-            authSource=config.database,
+            password=config.password
         )
         logger.info(f"Server version: {self._client.server_info()['version']}")
         self._db = self._client[config.database]

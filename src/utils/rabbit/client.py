@@ -4,7 +4,7 @@ from typing import Callable
 import pika
 from pika.adapters.blocking_connection import BlockingChannel
 
-from log4py import logger
+from utils.logger.log import logger
 
 from ..structures import RabbitConfig
 
