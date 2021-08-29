@@ -1,6 +1,6 @@
 from pymongo import MongoClient
 
-from mongo.structures import MongoConfig
+from ..structures import MongoConfig
 from logger.log import logger
 
 
@@ -15,7 +15,15 @@ class MongoInteraction:
         )
         logger.info(f"Server version: {self._client.server_info()['version']}")
         self._db = self._client[config.database]
-        self._collection = self._db['patents']
+        self._collection = None
+
+    @property
+    def collection(self):
+        return self._collection
+
+    @collection.setter
+    def collection(self, collection):
+        self._collection = self._db[collection]
 
     def add_values_to_collection(self, data: list) -> int:
         amount_inserted_documents = 0
@@ -24,7 +32,9 @@ class MongoInteraction:
                 continue
             amount_inserted_documents += 1
             self._collection.insert_one(value)
-        logger.info(f"Inserted {amount_inserted_documents} new patents into collection.")
+        logger.info(
+            f"Inserted {amount_inserted_documents} new patents into collection."
+        )
         return amount_inserted_documents
 
     def is_value_exist(self, title: str) -> bool:
